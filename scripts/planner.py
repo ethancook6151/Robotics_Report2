@@ -16,8 +16,8 @@ sphere_y = 0
 sphere_z = 0
 sphere_radius = 0 
 recieved_sphere_data = False 
-rqt_toggle = False
-pause_toggle = False
+rob_avil = False
+ball_avil = False
 curr_pos = [0.0]*6
 
 
@@ -44,23 +44,27 @@ def get_sphere(data):
 	global sphere_z
 	global sphere_radius
 	global recieved_sphere_data
+	global ball_avil
 	
-	sphere_x = data.xc
-	sphere_y = data.yc
-	sphere_z = data.zc
-	sphere_radius = data.radius
-	recieved_sphere_data = True 
+	if not ball_avil:
+		sphere_x = data.xc
+		sphere_y = data.yc
+		sphere_z = data.zc
+		sphere_radius = data.radius
+	ball_avil = True
 
 def get_pos(data):
 	global curr_pos
+	global rob_avil 
 	
-	curr_pos[0] = data.linear.x
-	curr_pos[1] = data.linear.y
-	curr_pos[2] = data.linear.z
-	curr_pos[3] = data.angular.x
-	curr_pos[4] = data.angular.y
-	curr_pos[5] = data.angular.z
-	
+	if not rob_avil:
+		curr_pos[0] = data.linear.x
+		curr_pos[1] = data.linear.y
+		curr_pos[2] = data.linear.z
+		curr_pos[3] = data.angular.x
+		curr_pos[4] = data.angular.y
+		curr_pos[5] = data.angular.z
+	rob_avil = True 
 	
 def rqt_listener(data):
 	global rqt_toggle
@@ -87,12 +91,12 @@ if __name__ == '__main__':
 	# Set a 10Hz frequency
 	loop_rate = rospy.Rate(10)
 	planned = False
-	
+	plan = Plan()
 	while not rospy.is_shutdown():
 		# add a ros transform listener
 		tfBuffer = tf2_ros.Buffer()
 		listener = tf2_ros.TransformListener(tfBuffer)
-		if not planned:
+		if not planned and ball_avil and rob_avil:
 			try:
 				trans = tfBuffer.lookup_transform("base", "camera_color_optical_frame", rospy.Time())
 			except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
@@ -117,23 +121,26 @@ if __name__ == '__main__':
 			print("Transformed: \n", "x: ", x, "y: ", y, "z: ", z, "radius: ", radius, "\n")
 				
 			# Define plan
-			plan = Plan()
-			open = 1
+			
+			open1 = 1
 			close = 2
 			stay = 0
+			y_offset = -0.01
 			roll, pitch, yaw = curr_pos[3], curr_pos[4], curr_pos[5]
 			# Starting position 
 			add_point(curr_pos[0],curr_pos[1], curr_pos[2], roll, pitch, yaw, stay, plan)
+			add_point(x, y+y_offset, z+.1, roll, pitch, yaw, stay, plan)
 			# Position with x, y, z + radius and stop to grip ball
-			add_point(x, y, z+.02, roll, pitch, yaw, close, plan)
-			#add_point(x, y, z+.02, roll, pitch, yaw, close, plan)
-			#add_point(x, y, z+.02, roll, pitch, yaw, stay, plan)
+			add_point(x, y+y_offset, z+.02, roll, pitch, yaw, stay, plan)
+			add_point(x, y+y_offset, z+.02, roll, pitch, yaw, close, plan)
+			add_point(x, y+y_offset, z+.1, roll, pitch, yaw, stay, plan)
 			# Turn right 
 			add_point(0.3, -0.408, 0.274, roll, pitch, yaw, stay, plan)
+			add_point(0.3, -0.408, z+.02, roll, pitch, yaw, stay, plan)
 			# Decrease z to drop ball 
-			add_point(0.3, -0.408, z+.02, roll, pitch, yaw, open, plan)
-			# Open gripper
-			#add_point(0.3, -0.408, z+.02, roll, pitch, yaw, open, plan)
+			add_point(0.3, -0.408, z+.02, roll, pitch, yaw, open1, plan)
+			# open1 gripper
+			#add_point(0.3, -0.408, z+.02, roll, pitch, yaw, open1, plan)
 			# Back to Start
 			add_point(-0.014, -0.408, 0.274, roll, pitch, yaw, stay, plan)
 			planned = True
@@ -144,6 +151,11 @@ if __name__ == '__main__':
 		loop_rate.sleep()
 				
 	
+	
+	
+	
+	
+
 	
 	
 	
